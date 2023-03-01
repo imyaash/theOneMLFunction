@@ -5,12 +5,14 @@ This Python module includes theOneMLFunction, which is a machine learning functi
 
 It requires the following dependencies to be installed: NumPy, Pandas, Scikit-learn, SciPy, and Random.
 
-  theOneMLFunction takes as input the following parameters:
+theOneMLFunction takes as input the following parameters:
+  
     data: pandas.DataFrame, the input data.
     targetVar: str, the name of the target variable.
     isContinuous: bool, a binary indicator whether the target variable is continuous or not.
     randomState: int, the seed value for the random number generator.
 
-  The function returns the following:
+The function returns the following:
+
     bestModel: scikit-learn model, the best trained model.
     selectedFeatures: list, the most important features.
