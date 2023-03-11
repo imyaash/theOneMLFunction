@@ -18,7 +18,7 @@ To install the required packages, you can use pip:
 
 Usage:
 
-   from theOneMLFunction import theOneMLFunction
+    from theOneMLFunction import theOneMLFunction
 
     # data: pandas.DataFrame containing input data
     # targetVar: str containing the name of the target variable in data
