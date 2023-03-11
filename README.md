@@ -28,3 +28,16 @@ Usage:
     bestModel, selectedFeatures = theOneMLFunction(data, targetVar, isContinuous, randomState)
 
 The function returns the best trained model and the selected features, which are the 5 most important features selected using a feature selection method.
+
+Contact
+
+If you encounter any issues or errors while implementing theOneMLFunction, please feel free to contact me at yashppanchal1997@gmail.com. I'll do my best to help you out!
+
+Please note that theOneMLFunction is still in active development, and the following features are in the planning or implementation phase:
+
+    ClassBalancerChecker: Checks if there is class imbalance and implements class_weights or under/oversampling as necessary
+    Model ensembling: Ensembles different combinations of the top 3 best models
+    More detailed output: Implementing metrics functions for proper validation metrics, and feature importance / coefficient plots
+    Multi-Label Classification: Adding support for multi-label classification tasks
+
+Thank you for your understanding, and I welcome any feedback or suggestions for improvements!
