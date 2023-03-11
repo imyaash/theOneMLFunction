@@ -13,7 +13,7 @@ returns a list of tuples. Each tuple contains a classification model object,
 a dictionary of its corresponding hyperparameters to be tuned,
 and a string representing the evaluation metric to be used for cross-validation.
 
-The available regression models are:
+The available classification models are:
 - LogisticRegression
 - RidgeClassifier
 - SGDClassifier
