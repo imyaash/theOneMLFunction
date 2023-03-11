@@ -29,6 +29,38 @@ Usage:
 
 The function returns the best trained model and the selected features, which are the 5 most important features selected using a feature selection method.
 
+Details
+
+    The function currently uses mutual information-based feature selection, and it is not currently customizable.
+    The following candidate models are currently included. It is possible for the user to add or remove models.
+        LinearRegression
+        Ridge
+        Lasso
+        SGDRegressor
+        ElasticNet
+        BayesianRidge
+        KNeighborsRegressor
+        RadiusNeighborsRegressor
+        GaussianProcessRegressor
+        DecisionTreeRegressor
+        RandomForestRegressor
+        ExtraTreesRegressor
+        GradientBoostingRegressor
+        LogisticRegression
+        RidgeClassifier
+        SGDClassifier
+        GaussianNB
+        MultinomialNB
+        KNeighborsClassifier
+        RadiusNeighborsClassifier
+        GaussianProcessClassifier
+        DecisionTreeClassifier
+        RandomForestClassifier
+        ExtraTreesClassifier
+        GradientBoostingClassifier
+    The function automatically tunes the hyperparameters by randomized search through the hyperparameter grid provided in the CandidateModels function. The parameter grid can be edited to fit the needs of the project by the end-user.
+    Currently, r2 is used for regression models and accuracy is used for the classification, different metrics are being looked into.
+
 Contact
 
 If you encounter any issues or errors while implementing theOneMLFunction, please feel free to contact me at yashppanchal1997@gmail.com. I'll do my best to help you out!
