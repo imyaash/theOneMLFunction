@@ -16,6 +16,9 @@ from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.preprocessing import OrdinalEncoder, Normalizer, StandardScaler, MinMaxScaler
 from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
 from sklearn.model_selection import RandomizedSearchCV
+from regCandidateModels import regressionEnsembleModel
+from clfCandidateModels import classificationEnsembleModel
+from itertools import combinations
 
 def findBestSubset(data, n_subsets, subsetSize, randomState):
     """
@@ -305,7 +308,7 @@ def trainer(models, sub, targetVar, randomState):
     # Splitting the stratified subset into features and target
     features = sub.drop(targetVar, axis = 1)
     target = sub[targetVar]
-    
+
     # Training each model and finding the best hyper-parameters by cross-validation
     bestModel = None
     bestScore = 0
@@ -452,6 +455,227 @@ def retrainer(bestModel, data, targetVar):
     if type(bestModel.best_estimator_).__name__ in ["DecisionTreeRegressor", "DecisionTreeClassifier", "RandomForestRegressor", "RandomForestClassifier", "ExtraTreesRegressor", "ExtraTreesClassifier", "GradientBoostingRegressor", "GradientBoostingClassifier"]:
         bestModel.fit(features, target)
     elif type(bestModel.best_estimator_).__name__ in ["LinearRegression", "Ridge", "Lasso", "SGDRegressor", "ElasticNet", "BayesianRidge", "KNeighborsRegressor", "RadiusNeighborsRegressor", "GaussianProcessRegressor"]:
+        normalisedFeatures = normaliser_v2(features, "standard")
+        bestModel.fit(normalisedFeatures, target)
+    else:
+        normalisedFeatures = normaliser_v2(features, "minmax")
+        bestModel.fit(normalisedFeatures, target)
+
+    bestScore = bestModel.best_score_
+    bestParams = bestModel.best_params_
+
+    return bestModel, bestScore, bestParams
+
+def trainer_v2(models, sub, targetVar, randomState):
+    """
+    Trains a set of machine learning models on a stratified subset of data, and returns the best model
+    and the top three models that are not tree-based.
+
+    Parameters:
+    -----------
+    models: list of tuples
+        A list of tuples, where each tuple contains a machine learning model, its hyperparameters, and a scoring metric.
+    sub: pandas DataFrame
+        A stratified subset of the data to train the models on.
+    targetVar: str
+        The name of the target variable in the dataset.
+    randomState: int
+        Random state to be used for reproducibility.
+
+    Returns:
+    --------
+    bestModel: RandomizedSearchCV object
+        The best model selected based on the cross-validation performance.
+    bestScore: float
+        The mean cross-validation score of the best model.
+    top3Models: list of RandomizedSearchCV objects
+        The top three models that are not tree-based, sorted by their cross-validation score in descending order.
+    
+    """
+    # Splitting the stratified subset into features and target
+    features = sub.drop(targetVar, axis = 1)
+    target = sub[targetVar]
+
+    # Training each model and finding the best hyper-parameters by cross validation
+    bestModel = None
+    bestScore = 0
+    top3Models = []
+    top3Scores = []
+    for model, hyperparams, scoring in models:
+        tuner = RandomizedSearchCV(model, hyperparams, cv = 5, n_jobs = -1, n_iter = 25, scoring = scoring, verbose = 5, random_state = randomState)
+        # Checking if the model is not tree-based and using scaled data for not-tree based models
+        if type(model).__name__ in ["DecisionTreeRegressor", "DecisionTreeClassifier", "RandomForestRegressor", "RandomForestClassifier", "ExtraTreesRegressor", "ExtraTreesClassifier", "GradientBoostingRegressor", "GradientBoostingClassifier"]:
+            tuner.fit(features, target)
+        elif type(model).__name__ in ["LinearRegression", "Ridge", "Lasso", "SGDRegressor", "ElasticNet", "BayesianRidge", "KNeighborsRegressor", "RadiusNeighborsRegressor", "GaussianProcessRegressor"]:
+            normalisedFeatures = normaliser_v2(features, "standard")
+            tuner.fit(normalisedFeatures, target)
+        else:
+            normalisedFeatures = normaliser_v2(features, "minmax")
+            tuner.fit(normalisedFeatures, target)
+        score = tuner.best_score_
+        if np.nanmean(score) > bestScore:
+            bestModel = tuner
+            bestScore = np.nanmean(score)
+        # Checking if the top 3 model list has fewer than 3 models
+        if len(top3Models) < 3:
+            if type(bestModel.best_estimator_).__name__ not in ["DecisionTreeRegressor", "DecisionTreeClassifier", "RandomForestRegressor", "RandomForestClassifier", "ExtraTreesRegressor", "ExtraTreesClassifier", "GradientBoostingRegressor", "GradientBoostingClassifier"]:
+                top3Models.append(bestModel)
+                top3Scores.append(bestScore)
+        else:
+            if type(bestModel.best_estimator_).__name__ not in ["DecisionTreeRegressor", "DecisionTreeClassifier", "RandomForestRegressor", "RandomForestClassifier", "ExtraTreesRegressor", "ExtraTreesClassifier", "GradientBoostingRegressor", "GradientBoostingClassifier"]:
+                # Comparing score of the new model with the ones in the list
+                if bestScore > min(top3Scores):
+                    # Adding new model and score to the list
+                    top3Models.append(bestModel.best_estimator_)
+                    top3Scores.append(bestScore)
+                    # Removing the worst model from the best model list
+                    top3Models.pop(top3Scores.index(min(top3Scores)))
+                    top3Scores.pop(top3Scores.index(min(top3Scores)))
+    
+    return bestModel, bestScore, top3Models
+
+def ensembler(top3Models, sub, targetVar, isContinuous, randomState):
+    """
+    This function takes in a list of top 3 models, a subset of data, target
+    variable, a boolean value indicating whether the target variable is continuous
+    or not, and a random state.
+    
+    The function creates an ensemble model by combining different subsets of
+    the top 3 models and selects the best ensemble model using a random search
+    cross-validation approach. If the target variable is continuous, it uses a
+    regression ensemble model, and if it is categorical, it uses a classification
+    ensemble model.
+    
+    Parameters:
+    -----------
+    top3Models: a list of top 3 models
+        A list of tuples, where each tuple contains a machine learning model, its hyperparameters, and a scoring metric.
+    sub: pandas DataFrame
+        A stratified subset of the data to train the models on.
+    targetVar: str
+        The name of the target variable in the dataset.
+    isContinuous: bool
+        boolean value indicating whether the target variable is continuous or not
+    randomState: int
+        Random state to be used for reproducibility.
+    
+    Returns:
+    --------
+    bestEnsembleModel: RandomizedSearchCV object
+        The best model selected based on the cross-validation performance.
+    bestEnsembleScore: float
+        The mean cross-validation score of the best model.
+    
+    """
+    # Dropping the subset of the date into features and target variable
+    features = sub.drop(targetVar, axis = 1)
+    target = sub[targetVar]
+    
+    # Initialising the best ensemble model and best score to zero
+    bestEnsembleModel = None
+    bestEnsembleScore = 0
+    
+    # Looping through the different combinations of models
+    for i in range(1, len(top3Models) + 1):
+        for combo in combinations(top3Models, i):
+            # It target variable is continuous
+            if isContinuous:
+                # Creating a regression ensemble model
+                ensembleModel = regressionEnsembleModel(combo, randomState)
+                # Performing a randomised search cross-validation with 5 folds
+                tuner = RandomizedSearchCV(ensembleModel[0], ensembleModel[1], cv = 5, n_jobs = -1, n_iter = 25, scoring = ensembleModel[2], verbose = 5, random_state = randomState)
+                # Normalising the features with stardard scaling
+                normalisedFeatures = normaliser_v2(features, "standard")
+                # Fitting the model on the mormalised features
+                tuner.fit(normalisedFeatures, target)
+            # If target variable is categorical
+            else:
+                # Creating a classification ensemble model
+                ensembleModel = classificationEnsembleModel(combo, randomState)
+                # Performing a randomised search cross-validation with 5 folds
+                tuner = RandomizedSearchCV(ensembleModel[0], ensembleModel[1], cv = 5, n_jobs = -1, n_iter = 25, scoring = ensembleModel[2], verbose = 5, random_state = randomState)
+                # Normalising the features with minmax scaling
+                normalisedFeatures = normaliser_v2(features, "minmax")
+                # Fitting the model on the mormalised features
+                tuner.fit(normalisedFeatures, target)
+            # Getting the best cross-validation score of the model
+            score = tuner.best_score_
+            # If the current ensemble model has better score, update the best ensemble model and best score
+            if np.nanmean(score) > bestEnsembleScore:
+                bestEnsembleModel = tuner
+                bestEnsembleScore = np.nanmean(score)
+    
+    return bestEnsembleModel, bestEnsembleScore
+
+def compareNselect(bestModel, bestScore, bestEnsembleModel, bestEnsembleScore):
+    """
+    This function compares the scores of two models and returns the model with the higher score.
+    
+    Parameters:
+    -----------
+    bestModel: RandomizedSearchCV object
+        The best model selected based on the cross-validation performance.
+    bestScore: float
+        The mean cross-validation score of the best model.
+    bestEnsembleModel: RandomizedSearchCV object
+        The best model selected based on the cross-validation performance.
+    bestEnsembleScore: float
+        The mean cross-validation score of the best model.
+    
+    Returns:
+    --------
+    bestModel: RandomizedSearchCV object
+        The best model selected based on the cross-validation performance.
+    bestScore: float
+        The mean cross-validation score of the best model.
+        
+        ||or||
+        
+    bestEnsembleModel: RandomizedSearchCV object
+        The best model selected based on the cross-validation performance.
+    bestEnsembleScore: float
+        The mean cross-validation score of the best model.
+        
+    """
+    # Checking if the score of the ensemble is lower than the score of the input best model
+    if bestEnsembleScore < bestScore:
+        # Returning the input best model and its score
+        return bestModel, bestScore
+    else:
+        # Returning the best ensemble model and its score
+        return bestEnsembleModel, bestEnsembleScore
+
+def retrainer_v2(bestModel, data, targetVar):
+    """
+    Retrains the best model using the non-scaled data for tree-based models and
+    the standard or minmax scaled data for other models.
+
+    Parameters:
+    bestModel : sklearn.model_selection._search.RandomizedSearchCV
+        The best model based on the cross-validation results.
+    data : pandas.DataFrame
+        Input data containing the features and target variable.
+    targetVar : str
+        The name of the target variable in the data.
+
+    Returns:
+    bestModel : sklearn.model_selection._search.RandomizedSearchCV
+        The retrained best model based on the cross-validation results.
+    bestScore : float
+        The mean cross-validation score of the retrained model.
+    bestParams : dict
+        The best hyper-parameters found by cross-validation of the retrained model.
+
+    """
+
+    # Splitting the data into features and target
+    features = data.drop(targetVar, axis = 1)
+    target = data[targetVar]
+
+    # Re-fitting the best model with the whole dataset, while using the non scaled data for the tree-based models
+    if type(bestModel.best_estimator_).__name__ in ["DecisionTreeRegressor", "DecisionTreeClassifier", "RandomForestRegressor", "RandomForestClassifier", "ExtraTreesRegressor", "ExtraTreesClassifier", "GradientBoostingRegressor", "GradientBoostingClassifier"]:
+        bestModel.fit(features, target)
+    elif type(bestModel.best_estimator_).__name__ in ["LinearRegression", "Ridge", "Lasso", "SGDRegressor", "ElasticNet", "BayesianRidge", "KNeighborsRegressor", "RadiusNeighborsRegressor", "GaussianProcessRegressor", "AdaBoostRegressor"]:
         normalisedFeatures = normaliser_v2(features, "standard")
         bestModel.fit(normalisedFeatures, target)
     else:
