@@ -1,3 +1,26 @@
+
+
+ ____  _      _____      ____  _____  ____  ____    _      _    
+/  _ \/ \  /|/  __/     / ___\/__ __\/  _ \/  __\  / \__/|/ \   
+| / \|| |\ |||  \ _____ |    \  / \  | / \||  \/|  | |\/||| |   
+| \_/|| | \|||  /_\____\\___ |  | |  | \_/||  __/  | |  ||| |_/\
+\____/\_/  \|\____\     \____/  \_/  \____/\_/     \_/  \|\____/
+                                                                
+
+ _______________________________________________________________
+|                                                               |
+|                             tOMLf                             |
+|           the One-stop Machine Learning Function              |
+|______________________________________________________________ |
+|                                                               |
+|  - Data cleaning                                              |
+|  - Feature selection                                          |
+|  - Model training                                             |
+|  - Hyperparameter tuning                                      |
+|  - Result printing                                            |
+|  - Model ensembling                                           |
+|______________________________________________________________ |
+
 # theOneMLFunction
 This Python script provides a one-stop machine learning function that can handle both regression and classification tasks. It includes data cleaning, feature selection, model training, hyperparameter tuning, result printing, model ensembling.
 
