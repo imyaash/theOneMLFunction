@@ -125,8 +125,8 @@ def classificationCandidateModels(randomState):
     return models
 
 def classificationEnsembleModel(baseEstimators, randomState):
-    model = ((AdaBoostClassifier(base_estimator = baseEstimators, random_state = randomState), {
+    model = (AdaBoostClassifier(base_estimator = baseEstimators, random_state = randomState), {
     "n_estimators"          : [50, 100, 150, 200, 300, 400, 500, 750, 1000, 1500],
     "learning_rate"         : np.linspace(0.1, 2.5, 25)
-    }, "accuracy"))
+    }, "accuracy")
     return model
